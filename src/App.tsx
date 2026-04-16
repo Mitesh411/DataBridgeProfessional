@@ -44,6 +44,10 @@ import {
 export default function App() {
   const [currentStep, setCurrentStep] = useState<Step>('connection');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [connectionDetails, setConnectionDetails] = useState({
+    source: { host: '', port: '', user: '', pass: '', dbName: '' },
+    dest: { host: '', port: '', user: '', pass: '', dbName: '' },
+  });
 
   const steps: { id: Step; label: string; icon: React.ReactNode }[] = [
     { id: 'connection', label: 'Database Connection', icon: <Database size={20} /> },
@@ -52,16 +56,27 @@ export default function App() {
     { id: 'transfer', label: 'Data Transfer', icon: <ArrowLeftRight size={20} /> },
   ];
 
+  const currentStepIndex = steps.findIndex(s => s.id === currentStep);
+
   const handleNext = () => {
-    if (currentStep === 'connection') setCurrentStep('tables');
-    else if (currentStep === 'tables') setCurrentStep('mapping');
-    else if (currentStep === 'mapping') setCurrentStep('transfer');
+    if (currentStepIndex < steps.length - 1) {
+      setCurrentStep(steps[currentStepIndex + 1].id);
+    }
   };
 
   const handleBack = () => {
-    if (currentStep === 'tables') setCurrentStep('connection');
-    else if (currentStep === 'mapping') setCurrentStep('tables');
-    else if (currentStep === 'transfer') setCurrentStep('mapping');
+    if (currentStepIndex > 0) {
+      setCurrentStep(steps[currentStepIndex - 1].id);
+    }
+  };
+
+  const isNextDisabled = () => {
+    if (currentStep === 'transfer') return true;
+    if (currentStep === 'connection') {
+      return !connectionDetails.source.host || !connectionDetails.source.port || !connectionDetails.source.user || !connectionDetails.source.dbName ||
+             !connectionDetails.dest.host || !connectionDetails.dest.port || !connectionDetails.dest.user || !connectionDetails.dest.dbName;
+    }
+    return false;
   };
 
   return (
@@ -128,9 +143,9 @@ export default function App() {
         <header className="h-16 flex items-center justify-between px-8 border-b border-slate-200 custom-glass sticky top-0 z-10">
           <div className="flex items-center gap-8">
             <nav className="flex items-center gap-6 text-sm font-medium">
-              <a href="#" className="text-slate-600 hover:text-primary transition-colors">Dashboard</a>
-              <a href="#" className="text-primary border-b-2 border-primary pb-1">Projects</a>
-              <a href="#" className="text-slate-600 hover:text-primary transition-colors">Logs</a>
+              <button className="text-slate-600 hover:text-primary transition-colors">Dashboard</button>
+              <button className="text-primary border-b-2 border-primary pb-1">Projects</button>
+              <button className="text-slate-600 hover:text-primary transition-colors">Logs</button>
             </nav>
           </div>
 
@@ -158,7 +173,13 @@ export default function App() {
         <main className="flex-1 overflow-y-auto p-12 pb-32">
           <div className="max-w-6xl mx-auto">
             <AnimatePresence mode="wait">
-              {currentStep === 'connection' && <ConnectionStep key="connection" />}
+              {currentStep === 'connection' && (
+                <ConnectionStep
+                  key="connection"
+                  details={connectionDetails}
+                  setDetails={setConnectionDetails}
+                />
+              )}
               {currentStep === 'tables' && <TableListingStep key="tables" />}
               {currentStep === 'mapping' && <MappingStep key="mapping" />}
               {currentStep === 'transfer' && <TransferStep key="transfer" />}
@@ -183,18 +204,18 @@ export default function App() {
                 <div className="w-32 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-emerald-500 transition-all duration-500" 
-                    style={{ width: currentStep === 'connection' ? '25%' : currentStep === 'tables' ? '50%' : currentStep === 'mapping' ? '75%' : '100%' }}
+                    style={{ width: `${((currentStepIndex + 1) / steps.length) * 100}%` }}
                   ></div>
                 </div>
                 <span className="text-xs font-black text-slate-700">
-                  {currentStep === 'connection' ? '25%' : currentStep === 'tables' ? '50%' : currentStep === 'mapping' ? '75%' : '100%'}
+                  {((currentStepIndex + 1) / steps.length) * 100}%
                 </span>
               </div>
             </div>
             
             <button 
               onClick={handleNext}
-              disabled={currentStep === 'transfer'}
+              disabled={isNextDisabled()}
               className="primary-gradient text-white px-8 py-2.5 rounded-lg text-sm font-bold shadow-lg hover:brightness-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
             >
               {currentStep === 'mapping' ? 'Initiate Transfer' : 'Next Step'}
@@ -207,9 +228,21 @@ export default function App() {
   );
 }
 
-function ConnectionStep() {
+function ConnectionStep({ details, setDetails }: {
+  key?: string,
+  details: any,
+  setDetails: React.Dispatch<React.SetStateAction<any>>
+}) {
   const [showPassA, setShowPassA] = useState(false);
   const [showPassB, setShowPassB] = useState(false);
+
+  const updateSource = (field: string, value: string) => {
+    setDetails(prev => ({ ...prev, source: { ...prev.source, [field]: value } }));
+  };
+
+  const updateDest = (field: string, value: string) => {
+    setDetails(prev => ({ ...prev, dest: { ...prev.dest, [field]: value } }));
+  };
 
   return (
     <motion.div 
@@ -239,51 +272,67 @@ function ConnectionStep() {
           <div className="space-y-5">
             <div className="grid grid-cols-4 gap-4">
               <div className="col-span-3">
-                <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-tighter">Host Address</label>
+                <label htmlFor="source-host" className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-tighter">Host Address</label>
                 <input 
+                  id="source-host"
                   type="text" 
                   placeholder="e.g. production-db.internal"
+                  value={details.source.host}
+                  onChange={(e) => updateSource('host', e.target.value)}
                   className="w-full bg-slate-50 border-none rounded-lg text-sm px-4 py-3 focus:ring-2 focus:ring-primary/20 transition-all"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-tighter">Port</label>
+                <label htmlFor="source-port" className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-tighter">Port</label>
                 <input 
+                  id="source-port"
                   type="text" 
                   placeholder="5432"
+                  value={details.source.port}
+                  onChange={(e) => updateSource('port', e.target.value)}
                   className="w-full bg-slate-50 border-none rounded-lg text-sm px-4 py-3 focus:ring-2 focus:ring-primary/20 transition-all"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-tighter">Username</label>
+              <label htmlFor="source-user" className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-tighter">Username</label>
               <input 
+                id="source-user"
                 type="text" 
                 placeholder="admin_user"
+                value={details.source.user}
+                onChange={(e) => updateSource('user', e.target.value)}
                 className="w-full bg-slate-50 border-none rounded-lg text-sm px-4 py-3 focus:ring-2 focus:ring-primary/20 transition-all"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-tighter">Password</label>
+              <label htmlFor="source-pass" className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-tighter">Password</label>
               <div className="relative">
                 <input 
+                  id="source-pass"
                   type={showPassA ? "text" : "password"} 
-                  defaultValue="********"
+                  placeholder="********"
+                  value={details.source.pass}
+                  onChange={(e) => updateSource('pass', e.target.value)}
                   className="w-full bg-slate-50 border-none rounded-lg text-sm px-4 py-3 focus:ring-2 focus:ring-primary/20 transition-all"
                 />
                 <button 
                   onClick={() => setShowPassA(!showPassA)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors"
+                  aria-label={showPassA ? "Hide password" : "Show password"}
                 >
                   {showPassA ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-tighter">Database Name</label>
+              <label htmlFor="source-db" className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-tighter">Database Name</label>
               <input 
+                id="source-db"
                 type="text" 
                 placeholder="primary_warehouse_v1"
+                value={details.source.dbName}
+                onChange={(e) => updateSource('dbName', e.target.value)}
                 className="w-full bg-slate-50 border-none rounded-lg text-sm px-4 py-3 focus:ring-2 focus:ring-primary/20 transition-all"
               />
             </div>
@@ -311,51 +360,67 @@ function ConnectionStep() {
           <div className="space-y-5">
             <div className="grid grid-cols-4 gap-4">
               <div className="col-span-3">
-                <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-tighter">Host Address</label>
+                <label htmlFor="dest-host" className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-tighter">Host Address</label>
                 <input 
+                  id="dest-host"
                   type="text" 
                   placeholder="e.g. azure-target.cloud"
+                  value={details.dest.host}
+                  onChange={(e) => updateDest('host', e.target.value)}
                   className="w-full bg-slate-50 border-none rounded-lg text-sm px-4 py-3 focus:ring-2 focus:ring-primary/20 transition-all"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-tighter">Port</label>
+                <label htmlFor="dest-port" className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-tighter">Port</label>
                 <input 
+                  id="dest-port"
                   type="text" 
                   placeholder="3306"
+                  value={details.dest.port}
+                  onChange={(e) => updateDest('port', e.target.value)}
                   className="w-full bg-slate-50 border-none rounded-lg text-sm px-4 py-3 focus:ring-2 focus:ring-primary/20 transition-all"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-tighter">Username</label>
+              <label htmlFor="dest-user" className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-tighter">Username</label>
               <input 
+                id="dest-user"
                 type="text" 
                 placeholder="migrator_svc"
+                value={details.dest.user}
+                onChange={(e) => updateDest('user', e.target.value)}
                 className="w-full bg-slate-50 border-none rounded-lg text-sm px-4 py-3 focus:ring-2 focus:ring-primary/20 transition-all"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-tighter">Password</label>
+              <label htmlFor="dest-pass" className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-tighter">Password</label>
               <div className="relative">
                 <input 
+                  id="dest-pass"
                   type={showPassB ? "text" : "password"} 
                   placeholder="••••••••"
+                  value={details.dest.pass}
+                  onChange={(e) => updateDest('pass', e.target.value)}
                   className="w-full bg-slate-50 border-none rounded-lg text-sm px-4 py-3 focus:ring-2 focus:ring-primary/20 transition-all"
                 />
                 <button 
                   onClick={() => setShowPassB(!showPassB)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors"
+                  aria-label={showPassB ? "Hide password" : "Show password"}
                 >
                   {showPassB ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-tighter">Database Name</label>
+              <label htmlFor="dest-db" className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-tighter">Database Name</label>
               <input 
+                id="dest-db"
                 type="text" 
                 placeholder="analytics_replica"
+                value={details.dest.dbName}
+                onChange={(e) => updateDest('dbName', e.target.value)}
                 className="w-full bg-slate-50 border-none rounded-lg text-sm px-4 py-3 focus:ring-2 focus:ring-primary/20 transition-all"
               />
             </div>
