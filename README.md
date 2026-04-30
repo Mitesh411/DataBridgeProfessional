@@ -1,20 +1,40 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# DataBridge Pro UI
 
-# Run and deploy your AI Studio app
+This repository contains a frontend prototype for an enterprise database migration tool. It provides a multi-step wizard interface that simulates configuring source and destination database connections, selecting tables for replication, mapping schema columns, and monitoring real-time data transfer telemetry. Use it as a starting point or visual proof-of-concept for building complex data pipeline and migration dashboards.
 
-This contains everything you need to run your app locally.
+## Prerequisites
 
-View your app in AI Studio: https://ai.studio/apps/295d0f24-a13f-4f99-b72a-5da0a9b4aa7b
+- Node.js 20+
+- npm
 
-## Run Locally
+## Quickstart
 
-**Prerequisites:**  Node.js
+```bash
+# Install dependencies
+npm install
 
+# Start the local development server
+npm run dev
+```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+The application will start on `http://localhost:3000`. The wizard flow starts at the Database Connection step and progresses through to the Data Transfer simulation.
+
+## Configuration Options
+
+- `DISABLE_HMR`: Set to `true` in your environment or `.env` file to disable Vite's Hot Module Replacement.
+- `GEMINI_API_KEY`: Defined in `.env`, configured in `vite.config.ts` to be injected into the client environment (`process.env.GEMINI_API_KEY`).
+- **Dev Server Port:** The dev server explicitly runs on port `3000` and binds to `0.0.0.0` as configured in the `package.json` `dev` script.
+
+## Project Structure
+
+```text
+src/
+  App.tsx      # Main application component containing the state and all wizard steps (Connection, Tables, Mapping, Transfer)
+  types.ts     # TypeScript interfaces and hardcoded mock data for the simulation
+  main.tsx     # React DOM rendering entry point
+  index.css    # Tailwind CSS entry and global design tokens/theme variables
+```
+
+## Full Docs
+
+[Link to full documentation]
