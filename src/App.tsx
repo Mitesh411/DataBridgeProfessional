@@ -48,19 +48,19 @@ import {
 } from './types';
 
 const DATABASE_SOURCE_A = {
-  host: 'localhost',
+  host: '',
   port: '3306',
-  user: 'root',
+  user: '',
   password: '',
-  dbName: 'try_at_home',
+  dbName: '',
 } as const;
 
 const DATABASE_DESTINATION_B = {
-  host: 'localhost',
+  host: '',
   port: '3306',
-  user: 'root',
+  user: '',
   password: '',
-  dbName: 'delibari_mapping_new_v2',
+  dbName: '',
 } as const;
 
 type ConnectionFormState = {
