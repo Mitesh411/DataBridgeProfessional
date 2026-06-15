@@ -13,7 +13,9 @@ type ConnectionPayload = {
 
 function parseConnectionBody(body: Record<string, unknown>): ConnectionPayload | null {
   const host = String(body.host ?? '').trim();
-  const port = Number(body.port) || 3306;
+  const parsedPort = body.port === undefined || body.port === null || String(body.port).trim() === '' ? 3306 : Number(body.port);
+  if (!Number.isInteger(parsedPort) || parsedPort < 1 || parsedPort > 65535) return null;
+  const port = parsedPort;
   const user = String(body.user ?? '');
   const password = body.password != null ? String(body.password) : '';
   const database = String(body.database ?? '').trim();
@@ -40,6 +42,7 @@ async function withMysqlConnection<T>(
     port: c.port,
     user: c.user,
     password: c.password,
+    connectTimeout: 10_000,
   });
   try {
     await conn.query('USE ??', [c.database]);
@@ -340,14 +343,36 @@ async function runSingleTransferJob(
   };
 }
 
+const MAX_JSON_BODY_BYTES = 1024 * 1024;
+
 function readJsonBody(req: IncomingMessage): Promise<Record<string, unknown>> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
-    req.on('data', (chunk) => chunks.push(chunk as Buffer));
+    let received = 0;
+    let rejected = false;
+
+    req.on('data', (chunk) => {
+      if (rejected) return;
+      const b = chunk as Buffer;
+      received += b.length;
+      if (received > MAX_JSON_BODY_BYTES) {
+        rejected = true;
+        reject(new Error('Request body exceeds 1 MiB limit.'));
+        req.destroy();
+        return;
+      }
+      chunks.push(b);
+    });
     req.on('end', () => {
+      if (rejected) return;
       try {
         const raw = Buffer.concat(chunks).toString('utf8');
-        resolve(raw ? (JSON.parse(raw) as Record<string, unknown>) : {});
+        const parsed = raw ? JSON.parse(raw) : {};
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+          reject(new Error('JSON request body must be an object.'));
+          return;
+        }
+        resolve(parsed as Record<string, unknown>);
       } catch (e) {
         reject(e);
       }
